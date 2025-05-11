@@ -1,12 +1,7 @@
 pub mod dimacs;
-
+pub mod num_comp;
 fn main() {
-    let mut cnf = dimacs::CnfBuilder::new();
-
-    let vars = cnf.variables("x", 0..7);
-
-    cnf.at_least_k_true(5, &vars);
-    cnf.at_most_k_true(5, &vars);
-
-    println!("{}", cnf.to_dimacs());
+    let num_comp = num_comp::NumComp::new();
+    let dimacs = num_comp.generate_base_dimacs();
+    println!("{}", dimacs);
 }

@@ -57,6 +57,12 @@ impl CnfBuilder {
         }
     }
 
+    pub fn get_tmp_variable(&mut self) -> Variable {
+        let name = format!("tmp{}", self.variable_counter);
+        let var = self.variable(name);
+        var
+    }
+
     pub fn variables(&mut self, base_name: &str, range: std::ops::Range<i32>) -> Vec<Variable> {
         range
             .map(|i| self.variable(format!("{}{}", base_name, i)))
