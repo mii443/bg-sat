@@ -74,6 +74,18 @@ impl CnfBuilder {
         self
     }
 
+    pub fn implies(&mut self, a: &Variable, b: &Variable) -> &mut Self {
+        self.clause(&[a.negative(), b.positive()])
+    }
+
+    pub fn negative_implies(&mut self, a: &Variable, b: &Variable) -> &mut Self {
+        self.clause(&[a.positive(), b.negative()])
+    }
+
+    pub fn right_negative_implies(&mut self, a: &Variable, b: &Variable) -> &mut Self {
+        self.clause(&[a.negative(), b.negative()])
+    }
+
     pub fn exactly_k_true(&mut self, k: usize, vars: &[Variable]) -> &mut Self {
         self.at_least_k_true(k, vars);
         self.at_most_k_true(k, vars);
@@ -91,6 +103,34 @@ impl CnfBuilder {
             let new_clauses: Vec<Vec<i32>> = combinations
                 .into_par_iter()
                 .map(|combo| combo.iter().map(|v| v.negative()).collect())
+                .collect();
+
+            self.clauses.lock().unwrap().extend(new_clauses);
+        }
+
+        self
+    }
+
+    pub fn at_most_k_true_with_two_implies(
+        &mut self,
+        k: usize,
+        vars: &[Variable],
+        implies: &[i32],
+    ) -> &mut Self {
+        if k + 1 <= vars.len() {
+            let combinations = generate_combinations_optimized(vars, k + 1);
+
+            let new_clauses: Vec<Vec<i32>> = combinations
+                .into_par_iter()
+                .map(|combo| {
+                    let mut n: Vec<i32> = combo.iter().map(|v| v.negative()).collect();
+                    if !n.is_empty() {
+                        for imply in implies {
+                            n.push(-imply);
+                        }
+                    }
+                    n
+                })
                 .collect();
 
             self.clauses.lock().unwrap().extend(new_clauses);
@@ -157,6 +197,38 @@ impl CnfBuilder {
                 result.push_str(&format!("{} ", literal));
             }
             result.push_str("0\n");
+        }
+
+        result
+    }
+
+    pub fn to_human_readable(&self) -> String {
+        let mut result = String::new();
+        let var_names: HashMap<i32, String> = self
+            .variables
+            .iter()
+            .map(|(name, var)| (var.id, name.clone()))
+            .collect();
+
+        let clauses = self.clauses.lock().unwrap();
+        for clause in &*clauses {
+            let clause_str: Vec<String> = clause
+                .iter()
+                .map(|&lit| {
+                    let var_id = lit.abs();
+                    let var_name = var_names.get(&var_id).unwrap();
+                    if lit > 0 {
+                        var_name.clone()
+                    } else {
+                        format!("¬{}", var_name)
+                    }
+                })
+                .collect();
+            result.push_str(&format!("({}) ∧\n", clause_str.join(" ∨ ")));
+        }
+
+        if result.ends_with(" ∧\n") {
+            result.truncate(result.len() - " ∧\n".len());
         }
 
         result
